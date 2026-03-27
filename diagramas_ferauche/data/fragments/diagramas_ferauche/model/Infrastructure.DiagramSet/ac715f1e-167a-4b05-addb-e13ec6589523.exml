@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<!--GENERATED FILE, PLEASE DO NOT EDIT!!!--><EXT object="diagramas_ferauche" version="4">
+  <OBJECT>
+    <ID name="diagramas_ferauche" mc="Infrastructure.DiagramSet" uid="ac715f1e-167a-4b05-addb-e13ec6589523"/>
+    <PID name="diagramas_ferauche" mc="Standard.Project" uid="12c85e10-1e85-4773-b93d-5efb494e158a"/>
+    <ATTRIBUTES>
+      <ATT name="Name"><![CDATA[diagramas_ferauche]]></ATT>
+      <ATT name="status">1970354901745664</ATT>
+    </ATTRIBUTES>
+    <DEPENDENCIES></DEPENDENCIES>
+  </OBJECT>
+</EXT>
