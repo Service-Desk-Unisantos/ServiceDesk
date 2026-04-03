@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .forms import ChamadoForm
+from .models import Chamado
 
 @login_required
 def criar_chamado(request):
@@ -12,7 +13,11 @@ def criar_chamado(request):
             chamado.save()
             return redirect('lista_chamados')
         
-        else:
+    else:
             form = ChamadoForm()
 
-        return render(request, 'chamados/criar.html', {'form': form})
+    return render(request, 'chamados/criar.html', {'form': form})
+
+def lista_chamados(request):
+     chamados = Chamado.objects.all()
+     return render(request, 'chamadox/lista.html', {'chamados:chamados'})
