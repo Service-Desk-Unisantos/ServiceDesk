@@ -116,3 +116,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+#como a gente nao criou a porra da tela de login, essa porrinha aqui joga direto pra pagina de login do django
+LOGIN_URL = '/admin/login/'
+
+# Após o login, o Django envia o usuário para a página inicial (sua lista)
+LOGIN_REDIRECT_URL = '/'
+
+# Define para onde o usuário vai ao clicar em sair (se você usar o logout do admin)
+LOGOUT_REDIRECT_URL = '/'

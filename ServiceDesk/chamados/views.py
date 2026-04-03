@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .forms import ChamadoForm
 from .models import Chamado
@@ -18,6 +18,17 @@ def criar_chamado(request):
 
     return render(request, 'chamados/criar.html', {'form': form})
 
+@login_required
 def lista_chamados(request):
-     chamados = Chamado.objects.all()
-     return render(request, 'chamadox/lista.html', {'chamados:chamados'})
+
+     # REGRA DE NEGÓCIO:
+    # Se o usuário for um Administrador/Técnico (is_staff no Django Admin)
+
+    if request.user.is_staff:
+        chamados = Chamado.objects.all()
+
+    else:
+         chamados = Chamado.objects.filter(usuario=request.user)
+
+    return render(render, 'chamados/lista.html', {'chamados': chamados})
+     
