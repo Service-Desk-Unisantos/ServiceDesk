@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Desk | Login</title>
+
+    <!-- Bootstrap para base visual da tela de login -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        .auth-page {
+            min-height: 100vh;
+            background: linear-gradient(140deg, #e9f2ff 0%, #f6f8fb 45%, #ffffff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 460px;
+            border: 0;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-form input {
+            width: 100%;
+            border: 1px solid #ced4da;
+            border-radius: 10px;
+            padding: 0.6rem 0.75rem;
+        }
+
+        .auth-form input:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <main class="auth-page">
+        <div class="card auth-card">
+            <div class="card-body p-4 p-md-5">
+                <h3 class="fw-bold mb-1 text-center">
+                    <i class="bi bi-headset text-primary me-2"></i>ServiceDesk Facul
+                </h3>
+                <p class="text-muted text-center mb-4">Entre com seu usuario e senha.</p>
+
+                <!-- Mensagens enviadas pela view (sucesso no logout/cadastro, por exemplo) -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Formulario de autenticacao (RF02) -->
+                <form method="post" class="auth-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next }}">
+
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+
+                    <button type="submit" class="btn btn-primary w-100 fw-bold mt-2">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Entrar
+                    </button>
+                </form>
+
+                <p class="text-center mt-4 mb-0">
+                    Ainda nao possui conta?
+                    <a href="{% url 'cadastro_usuario' %}" class="fw-semibold text-decoration-none">Criar cadastro</a>
+                </p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

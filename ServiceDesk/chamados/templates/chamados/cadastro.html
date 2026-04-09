@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Desk | Cadastro</title>
+
+    <!-- Bootstrap para base visual da tela de cadastro -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        .auth-page {
+            min-height: 100vh;
+            background: linear-gradient(140deg, #e9f2ff 0%, #f6f8fb 45%, #ffffff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 560px;
+            border: 0;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-form input {
+            width: 100%;
+            border: 1px solid #ced4da;
+            border-radius: 10px;
+            padding: 0.6rem 0.75rem;
+        }
+
+        .auth-form input:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <main class="auth-page">
+        <div class="card auth-card">
+            <div class="card-body p-4 p-md-5">
+                <h3 class="fw-bold mb-1 text-center">
+                    <i class="bi bi-person-plus-fill text-primary me-2"></i>Criar conta
+                </h3>
+                <p class="text-muted text-center mb-4">Cadastro de usuario para acesso ao Service Desk.</p>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Formulario de cadastro de usuario (RF01) -->
+                <form method="post" class="auth-form">
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text small">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+
+                    <button type="submit" class="btn btn-primary w-100 fw-bold mt-2">
+                        <i class="bi bi-check2-circle me-1"></i>Cadastrar
+                    </button>
+                </form>
+
+                <p class="text-center mt-4 mb-0">
+                    Ja possui conta?
+                    <a href="{% url 'login_usuario' %}" class="fw-semibold text-decoration-none">Fazer login</a>
+                </p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
