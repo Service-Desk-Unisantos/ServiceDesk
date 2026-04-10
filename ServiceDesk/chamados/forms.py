@@ -106,3 +106,18 @@ class AtualizacaoChamadoAdminForm(forms.Form):
         self.fields["status"].widget.attrs["class"] = "form-select"
         self.fields["prioridade"].widget.attrs["class"] = "form-select"
         self.fields["resposta"].widget.attrs["class"] = "form-control"
+
+
+class MensagemChamadoForm(forms.Form):
+    # Campo simples para conversa entre cliente e equipe no chamado.
+    mensagem = forms.CharField(
+        label="Mensagem",
+        required=True,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 4,
+                "class": "form-control",
+                "placeholder": "Escreva sua mensagem para a equipe",
+            }
+        ),
+    )

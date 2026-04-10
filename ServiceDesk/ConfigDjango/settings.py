@@ -87,8 +87,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = "/static/"
 
-# URL do servidor de notificacao em tempo real via WebSocket.
-SOCKET_NOTIFICACAO_URL = "ws://127.0.0.1:8765"
+# Configuracao do servidor TCP de notificacao em tempo real.
+SOCKET_NOTIFICACAO_HOST = "127.0.0.1"
+SOCKET_NOTIFICACAO_PORT = 8765
 
 AUTHENTICATION_BACKENDS = [
     "chamados.backends.EmailOuUsuarioBackend",

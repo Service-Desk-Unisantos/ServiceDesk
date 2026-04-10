@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Chamado, Comentario
+from .models import Chamado, Comentario, Notificacao
 
 
 class FluxoAutenticacaoTests(TestCase):
@@ -76,11 +76,20 @@ class ChamadosTests(TestCase):
 
     def test_usuario_comum_nao_visualiza_painel_admin_na_home(self):
         # Perfil cliente nao deve ver painel administrativo na tela inicial.
+        Chamado.objects.create(
+            titulo="Meu chamado recente",
+            descricao="Descricao recente",
+            categoria="software",
+            prioridade="baixa",
+            usuario=self.usuario,
+        )
         self.client.login(username="cliente", password="SenhaForte123!")
         response = self.client.get(reverse("lista_chamados"))
 
-        # Valida que o cliente recebe os cards de acao e nao o painel admin.
+        # Valida que o cliente recebe os cards de acao, o resumo dos proprios chamados e nao o painel admin.
         self.assertContains(response, "historico de chamados")
+        self.assertContains(response, "Meus chamados recentes")
+        self.assertContains(response, "Meu chamado recente")
         self.assertNotContains(response, "Painel de chamados")
 
     def test_usuario_comum_visualiza_apenas_proprios_chamados_no_historico(self):
@@ -106,6 +115,68 @@ class ChamadosTests(TestCase):
 
         self.assertContains(response, "Chamado do cliente")
         self.assertNotContains(response, "Chamado de outro usuario")
+
+    def test_cliente_abre_detalhe_do_proprio_chamado_com_conversa(self):
+        # Cliente deve conseguir abrir uma tela dedicada para acompanhar a conversa do chamado.
+        chamado = Chamado.objects.create(
+            titulo="Portal indisponivel",
+            descricao="Nao consigo acessar o portal.",
+            categoria="software",
+            prioridade="media",
+            usuario=self.usuario,
+        )
+        Comentario.objects.create(
+            chamado=chamado,
+            usuario=self.staff,
+            texto="Estamos analisando o caso.",
+        )
+
+        self.client.login(username="cliente", password="SenhaForte123!")
+        response = self.client.get(reverse("detalhe_chamado_cliente", args=[chamado.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Conversa com a equipe")
+        self.assertContains(response, "Estamos analisando o caso.")
+
+    def test_cliente_nao_abre_chamado_de_outro_usuario(self):
+        # Cliente nao pode acessar conversa de chamado que nao pertence a ele.
+        chamado = Chamado.objects.create(
+            titulo="Chamado restrito",
+            descricao="Descricao privada.",
+            categoria="rede",
+            prioridade="baixa",
+            usuario=self.outro_usuario,
+        )
+
+        self.client.login(username="cliente", password="SenhaForte123!")
+        response = self.client.get(reverse("detalhe_chamado_cliente", args=[chamado.id]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_cliente_envia_mensagem_para_equipe(self):
+        # Cliente deve conseguir responder no proprio chamado para manter a conversa.
+        chamado = Chamado.objects.create(
+            titulo="Acesso bloqueado",
+            descricao="Nao consigo entrar no sistema.",
+            categoria="acesso",
+            prioridade="alta",
+            usuario=self.usuario,
+        )
+
+        self.client.login(username="cliente", password="SenhaForte123!")
+        response = self.client.post(
+            reverse("responder_chamado_cliente", args=[chamado.id]),
+            {"mensagem": "Consegue verificar ainda hoje?"},
+        )
+
+        self.assertRedirects(response, reverse("detalhe_chamado_cliente", args=[chamado.id]))
+        self.assertTrue(
+            Comentario.objects.filter(
+                chamado=chamado,
+                usuario=self.usuario,
+                texto="Consegue verificar ainda hoje?",
+            ).exists()
+        )
 
     def test_staff_e_redirecionado_ao_tentar_abrir_historico_cliente(self):
         # Rotina evita que admin use a tela exclusiva de historico do cliente.
@@ -159,6 +230,28 @@ class ChamadosTests(TestCase):
         self.assertContains(response, "Chamado detalhe")
         self.assertContains(response, "Atualizar atendimento")
 
+    def test_staff_visualiza_mensagens_do_cliente_no_detalhe(self):
+        # Equipe deve enxergar tambem as mensagens enviadas pelo cliente.
+        chamado = Chamado.objects.create(
+            titulo="Erro no sistema",
+            descricao="Falha ao abrir tela.",
+            categoria="software",
+            prioridade="media",
+            status="aberto",
+            usuario=self.usuario,
+        )
+        Comentario.objects.create(
+            chamado=chamado,
+            usuario=self.usuario,
+            texto="Consigo reproduzir o problema em dois computadores.",
+        )
+
+        self.client.login(username="tecnico", password="SenhaForte123!")
+        response = self.client.get(reverse("detalhe_chamado_admin", args=[chamado.id]))
+
+        self.assertContains(response, "Conversa do chamado")
+        self.assertContains(response, "Consigo reproduzir o problema em dois computadores.")
+
     def test_cliente_nao_pode_visualizar_detalhe_admin(self):
         # Cliente deve ser bloqueado ao tentar abrir rota de detalhe administrativo.
         chamado = Chamado.objects.create(
@@ -207,6 +300,13 @@ class ChamadosTests(TestCase):
                 texto="Conta revisada e servico normalizado.",
             ).exists()
         )
+        self.assertTrue(
+            Notificacao.objects.filter(
+                chamado=chamado,
+                usuario=self.usuario,
+                tipo="status_chamado",
+            ).exists()
+        )
 
     def test_cliente_nao_pode_atualizar_chamado_admin(self):
         # Cliente nao pode alterar status/prioridade nem responder como infra.
@@ -235,6 +335,34 @@ class ChamadosTests(TestCase):
         self.assertEqual(chamado.prioridade, "media")
         self.assertFalse(Comentario.objects.filter(chamado=chamado).exists())
 
+    def test_endpoint_de_notificacoes_entrega_e_marca_como_lida(self):
+        # Polling deve retornar notificacoes pendentes do cliente e marca-las como lidas.
+        chamado = Chamado.objects.create(
+            titulo="Troca de status",
+            descricao="Descricao",
+            categoria="software",
+            prioridade="media",
+            status="andamento",
+            usuario=self.usuario,
+        )
+        notificacao = Notificacao.objects.create(
+            usuario=self.usuario,
+            chamado=chamado,
+            tipo="status_chamado",
+            mensagem="Seu chamado foi atualizado.",
+        )
+
+        self.client.login(username="cliente", password="SenhaForte123!")
+        response = self.client.get(reverse("notificacoes_pendentes"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["notificacoes"][0]["id"], notificacao.id)
+        notificacao.refresh_from_db()
+        self.assertTrue(notificacao.lida)
+
+        response_vazio = self.client.get(reverse("notificacoes_pendentes"))
+        self.assertEqual(response_vazio.json()["notificacoes"], [])
+
     def test_registro_de_chamado_salva_categoria(self):
         # RF03: registro inclui titulo, descricao e categoria.
         self.client.login(username="cliente", password="SenhaForte123!")
@@ -248,8 +376,23 @@ class ChamadosTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("lista_chamados"))
+        self.assertRedirects(response, reverse("historico_chamados_cliente"))
         chamado = Chamado.objects.get(titulo="Sem acesso ao sistema")
         self.assertEqual(chamado.categoria, "acesso")
         self.assertEqual(chamado.status, "aberto")
         self.assertEqual(chamado.usuario, self.usuario)
+
+    def test_staff_ao_criar_chamado_retorna_para_painel_admin(self):
+        # Fluxo administrativo continua no painel principal apos abrir chamado.
+        self.client.login(username="tecnico", password="SenhaForte123!")
+        response = self.client.post(
+            reverse("criar_chamado"),
+            {
+                "titulo": "Chamado interno",
+                "descricao": "Criado pelo tecnico.",
+                "categoria": "hardware",
+                "prioridade": "media",
+            },
+        )
+
+        self.assertRedirects(response, reverse("lista_chamados"))

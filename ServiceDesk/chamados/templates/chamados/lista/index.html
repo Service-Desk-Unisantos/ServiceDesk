@@ -75,6 +75,12 @@
             box-shadow: 0 0.5rem 1rem rgba(13, 110, 253, 0.15);
         }
 
+        .cliente-resumo-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        }
+
         /* Ajuste responsivo para manter boa leitura no mobile. */
         @media (max-width: 767.98px) {
             .cliente-home {
@@ -194,6 +200,77 @@
                             </a>
                         </div>
                     </div>
+
+                    <!-- Resumo dos chamados do cliente ja na home para evitar passo extra. -->
+                    <div class="cliente-resumo-card shadow-sm mt-4 p-4">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+                            <div>
+                                <h5 class="fw-bold text-dark mb-1">
+                                    <i class="bi bi-journal-text me-2 text-primary"></i>Meus chamados recentes
+                                </h5>
+                                <p class="text-muted mb-0">
+                                    {% if total_chamados_cliente %}
+                                        Voce tem {{ total_chamados_cliente }} chamado{{ total_chamados_cliente|pluralize }} registrado{{ total_chamados_cliente|pluralize }}.
+                                    {% else %}
+                                        Seus chamados mais recentes vao aparecer aqui assim que voce abrir o primeiro.
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <a href="{% url 'historico_chamados_cliente' %}" class="btn btn-outline-primary fw-bold align-self-start align-self-md-auto">
+                                <i class="bi bi-clock-history me-1"></i>Ver historico completo
+                            </a>
+                        </div>
+
+                        {% if chamados %}
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead>
+                                        <tr class="text-secondary small">
+                                            <th class="ps-0 py-3">ASSUNTO</th>
+                                            <th>STATUS</th>
+                                            <th>PRIORIDADE</th>
+                                            <th>ABERTURA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for chamado in chamados %}
+                                            <tr>
+                                                <td class="ps-0 fw-bold text-dark">{{ chamado.titulo }}</td>
+                                                <td>
+                                                    {% if chamado.status == 'aberto' %}
+                                                        <span class="badge bg-primary">Aberto</span>
+                                                    {% elif chamado.status == 'andamento' %}
+                                                        <span class="badge bg-warning text-dark">Em andamento</span>
+                                                    {% elif chamado.status == 'concluido' %}
+                                                        <span class="badge bg-success">Concluido</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Status indefinido</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if chamado.prioridade == 'alta' %}
+                                                        <span class="badge bg-danger text-white">Alta</span>
+                                                    {% elif chamado.prioridade == 'media' %}
+                                                        <span class="badge bg-warning text-dark">Media</span>
+                                                    {% else %}
+                                                        <span class="badge bg-info text-dark">Baixa</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-muted small">{{ chamado.data_criacao|date:"d/m/Y H:i" }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="border rounded-3 bg-white p-4 text-center">
+                                <i class="bi bi-inbox fs-2 text-muted"></i>
+                                <p class="mt-2 mb-0 text-muted">
+                                    Nenhum chamado aberto ainda. Use o atalho acima para registrar o primeiro.
+                                </p>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             </section>
         {% endif %}
@@ -275,10 +352,8 @@
     <!-- Script do Bootstrap para modais e interacoes da pagina. -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Configuracao global consumida pelo script de notificacoes via socket.
-        window.SOCKET_NOTIFICACAO_URL = "ws://127.0.0.1:8765";
-        window.USUARIO_LOGADO_ID = {{ user.id|default:"0" }};
-        window.USUARIO_EH_ADMIN = {% if user.is_staff or user.is_superuser %}true{% else %}false{% endif %};
+        // Configuracao global consumida pelo script de notificacoes por polling HTTP.
+        window.NOTIFICACOES_PENDENTES_URL = "{% url 'notificacoes_pendentes' %}";
     </script>
     <!-- Script que conecta ao servidor socket e mostra alertas em tempo real. -->
     <script src="{% static 'chamados/js/notificacoes_socket.js' %}"></script>

@@ -1,0 +1,6 @@
+venv/
+.venv/
+ServiceDesk/venv/
+__pycache__/
+*.py[cod]
+*.sqlite3

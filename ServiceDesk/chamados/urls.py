@@ -23,10 +23,25 @@ urlpatterns = [
         views.atualizar_chamado_admin,
         name="atualizar_chamado_admin",
     ),
+    path(
+        "meus-chamados/<int:chamado_id>/",
+        views.detalhe_chamado_cliente,
+        name="detalhe_chamado_cliente",
+    ),
+    path(
+        "meus-chamados/<int:chamado_id>/responder/",
+        views.responder_chamado_cliente,
+        name="responder_chamado_cliente",
+    ),
     # Historico individual de chamados para perfil cliente.
     path(
         "meus-chamados/",
         views.historico_chamados_cliente,
         name="historico_chamados_cliente",
+    ),
+    path(
+        "notificacoes/pendentes/",
+        views.notificacoes_pendentes,
+        name="notificacoes_pendentes",
     ),
 ]

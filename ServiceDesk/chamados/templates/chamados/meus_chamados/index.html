@@ -137,38 +137,11 @@
                                     </td>
                                     <td class="text-muted small">{{ chamado.data_criacao|date:"d/m/Y H:i" }}</td>
                                     <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-primary px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modal{{ chamado.id }}">
-                                            Visualizar
-                                        </button>
+                                        <a href="{% url 'detalhe_chamado_cliente' chamado.id %}" class="btn btn-sm btn-outline-primary px-3 fw-bold">
+                                            Abrir conversa
+                                        </a>
                                     </td>
                                 </tr>
-
-                                <!-- Modal com informacoes completas do chamado selecionado. -->
-                                <div class="modal fade" id="modal{{ chamado.id }}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content border-0 shadow-lg">
-                                            <div class="modal-header bg-dark text-white">
-                                                <h5 class="modal-title fw-bold">Detalhes do chamado #{{ chamado.id }}</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body p-4 text-start">
-                                                <h4 class="fw-bold mb-1 text-primary">{{ chamado.titulo }}</h4>
-                                                <p class="text-muted small mb-3">
-                                                    Aberto em: {{ chamado.data_criacao|date:"d/m/Y H:i" }}
-                                                </p>
-                                                <p class="mb-2"><strong>Categoria:</strong> {{ chamado.get_categoria_display }}</p>
-                                                <p class="mb-3"><strong>Status:</strong> {{ chamado.get_status_display }}</p>
-                                                <h6 class="fw-bold text-dark text-uppercase" style="font-size: 0.8rem;">Descricao</h6>
-                                                <div class="caixa-descricao shadow-sm mt-2">
-                                                    {{ chamado.descricao }}
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer bg-light border-0">
-                                                <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">Fechar</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             {% empty %}
                                 <tr>
                                     <td colspan="6" class="text-center py-5">
@@ -186,10 +159,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Configuracao global consumida pelo script de notificacoes via socket.
-        window.SOCKET_NOTIFICACAO_URL = "ws://127.0.0.1:8765";
-        window.USUARIO_LOGADO_ID = {{ user.id|default:"0" }};
-        window.USUARIO_EH_ADMIN = false;
+        // Configuracao global consumida pelo script de notificacoes por polling HTTP.
+        window.NOTIFICACOES_PENDENTES_URL = "{% url 'notificacoes_pendentes' %}";
     </script>
     <!-- Script que conecta ao servidor socket e mostra alertas em tempo real. -->
     <script src="{% static 'chamados/js/notificacoes_socket.js' %}"></script>

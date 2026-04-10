@@ -55,3 +55,27 @@ class Comentario(models.Model):
 
     def __str__(self):
         return f"{self.usuario} - {self.chamado}"
+
+
+class Notificacao(models.Model):
+    # Notificacao persistida para entrega por polling HTTP sem depender de WebSocket.
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="notificacoes",
+    )
+    chamado = models.ForeignKey(
+        Chamado,
+        on_delete=models.CASCADE,
+        related_name="notificacoes",
+    )
+    tipo = models.CharField(max_length=50)
+    mensagem = models.TextField()
+    lida = models.BooleanField(default=False)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criada_em", "-id"]
+
+    def __str__(self):
+        return f"{self.usuario} - {self.tipo}"

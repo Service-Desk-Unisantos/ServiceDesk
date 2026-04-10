@@ -1,7 +1,12 @@
+import json
+import logging
+import socket
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.conf import settings
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -10,11 +15,9 @@ from .forms import (
     CadastroUsuarioForm,
     ChamadoForm,
     LoginUsuarioForm,
+    MensagemChamadoForm,
 )
-from .models import Chamado, Comentario
-
-import json
-import logging
+from .models import Chamado, Comentario, Notificacao
 
 
 # Logger simples para registrar falhas nao bloqueantes de notificacao.
@@ -47,23 +50,27 @@ def enviar_notificacao_status_chamado(chamado):
         "mensagem": mensagem,
     }
 
-    # Import local evita quebrar o Django caso a lib websocket nao esteja instalada.
-    try:
-        from websockets.sync.client import connect
-    except Exception as exc:
-        logger.info(
-            "Biblioteca websockets indisponivel; notificacao nao enviada. Erro: %s",
-            exc,
-        )
-        return
+    # Persiste a notificacao para o frontend recupera-la por polling HTTP.
+    Notificacao.objects.create(
+        usuario_id=chamado.usuario_id,
+        chamado=chamado,
+        tipo="status_chamado",
+        mensagem=mensagem,
+    )
 
-    # Envia a notificacao para o servidor socket separado do Django.
+    # Envia o evento para um servidor TCP via socket puro.
     try:
-        with connect(settings.SOCKET_NOTIFICACAO_URL, open_timeout=0.5) as websocket:
-            websocket.send(json.dumps(payload, ensure_ascii=False))
+        with socket.create_connection(
+            (settings.SOCKET_NOTIFICACAO_HOST, settings.SOCKET_NOTIFICACAO_PORT),
+            timeout=0.5,
+        ) as cliente_socket:
+            envelope = {"acao": "publicar", "payload": payload}
+            cliente_socket.sendall(
+                (json.dumps(envelope, ensure_ascii=False) + "\n").encode("utf-8")
+            )
     except Exception as exc:
         logger.info(
-            "Falha ao enviar notificacao para o servidor socket: %s",
+            "Falha ao enviar notificacao para o servidor TCP: %s",
             exc,
         )
 
@@ -134,8 +141,10 @@ def criar_chamado(request):
             chamado.usuario = request.user
             chamado.save()
             messages.success(request, "Chamado registrado com sucesso.")
-            # Depois de salvar, volta para o painel principal.
-            return redirect("lista_chamados")
+            # Cliente segue direto para a area de acompanhamento do proprio chamado.
+            if request.user.is_staff or request.user.is_superuser:
+                return redirect("lista_chamados")
+            return redirect("historico_chamados_cliente")
     else:
         # Primeira abertura da pagina (sem envio de dados).
         form = ChamadoForm()
@@ -149,17 +158,26 @@ def criar_chamado(request):
 def lista_chamados(request):
     # Regra de negocio:
     # - staff (tecnico/admin) enxerga todos os chamados no painel
-    # - cliente nao recebe lista no painel inicial (usa area de atalhos)
-    if request.user.is_staff:
+    # - cliente ve um resumo dos proprios chamados na home
+    if request.user.is_staff or request.user.is_superuser:
         # Lista geral de chamados para acompanhamento inicial do time de infra.
         chamados = Chamado.objects.all()
+        total_chamados_cliente = 0
     else:
-        # Evita enviar historico de chamados para o template de painel do cliente.
-        chamados = Chamado.objects.none()
+        # Home do cliente mostra apenas os chamados mais recentes dele.
+        chamados = Chamado.objects.filter(usuario=request.user)[:5]
+        total_chamados_cliente = Chamado.objects.filter(usuario=request.user).count()
 
     # Envia a lista para o template do painel.
     # Template organizado por pasta da rota principal do painel.
-    return render(request, "chamados/lista/index.html", {"chamados": chamados})
+    return render(
+        request,
+        "chamados/lista/index.html",
+        {
+            "chamados": chamados,
+            "total_chamados_cliente": total_chamados_cliente,
+        },
+    )
 
 
 @login_required
@@ -228,6 +246,52 @@ def atualizar_chamado_admin(request, chamado_id):
 
 
 @login_required
+def detalhe_chamado_cliente(request, chamado_id):
+    # Cliente acessa apenas o proprio chamado para acompanhar e conversar com a equipe.
+    if request.user.is_staff or request.user.is_superuser:
+        messages.info(request, "Esta tela de conversa e destinada ao perfil cliente.")
+        return redirect("detalhe_chamado_admin", chamado_id=chamado_id)
+
+    chamado = get_object_or_404(
+        Chamado.objects.select_related("usuario").prefetch_related("comentarios__usuario"),
+        id=chamado_id,
+        usuario=request.user,
+    )
+
+    form_mensagem = MensagemChamadoForm()
+    return render(
+        request,
+        "chamados/detalhe_cliente/index.html",
+        {"chamado": chamado, "form_mensagem": form_mensagem},
+    )
+
+
+@login_required
+def responder_chamado_cliente(request, chamado_id):
+    # Cliente pode responder somente dentro dos proprios chamados.
+    if request.user.is_staff or request.user.is_superuser:
+        messages.error(request, "A conversa do cliente nao esta disponivel para administradores.")
+        return redirect("lista_chamados")
+
+    chamado = get_object_or_404(Chamado, id=chamado_id, usuario=request.user)
+    if request.method != "POST":
+        return redirect("detalhe_chamado_cliente", chamado_id=chamado.id)
+
+    form = MensagemChamadoForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Nao foi possivel enviar sua mensagem.")
+        return redirect("detalhe_chamado_cliente", chamado_id=chamado.id)
+
+    Comentario.objects.create(
+        chamado=chamado,
+        usuario=request.user,
+        texto=form.cleaned_data["mensagem"].strip(),
+    )
+    messages.success(request, "Mensagem enviada para a equipe.")
+    return redirect("detalhe_chamado_cliente", chamado_id=chamado.id)
+
+
+@login_required
 def historico_chamados_cliente(request):
     # Esta tela foi criada para o perfil cliente consultar somente os proprios chamados.
     if request.user.is_staff or request.user.is_superuser:
@@ -247,3 +311,29 @@ def historico_chamados_cliente(request):
         "chamados/meus_chamados/index.html",
         {"chamados": chamados},
     )
+
+
+@login_required
+def notificacoes_pendentes(request):
+    # Entrega notificacoes pendentes por HTTP para evitar WebSocket no browser.
+    consulta = Notificacao.objects.select_related("chamado", "usuario").filter(lida=False)
+    if not (request.user.is_staff or request.user.is_superuser):
+        consulta = consulta.filter(usuario=request.user)
+
+    notificacoes = list(consulta.order_by("criada_em", "id")[:20])
+    payload = [
+        {
+            "id": notificacao.id,
+            "tipo": notificacao.tipo,
+            "chamado_id": notificacao.chamado_id,
+            "usuario_id": notificacao.usuario_id,
+            "mensagem": notificacao.mensagem,
+            "criada_em": notificacao.criada_em.isoformat(),
+        }
+        for notificacao in notificacoes
+    ]
+
+    if notificacoes:
+        Notificacao.objects.filter(id__in=[item.id for item in notificacoes]).update(lida=True)
+
+    return JsonResponse({"notificacoes": payload})

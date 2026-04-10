@@ -1,15 +1,13 @@
 {
-    // Usa o interpretador Python do projeto interno para resolver imports do Django no VS Code.
-    "python.defaultInterpreterPath": "${workspaceFolder}\\ServiceDesk\\.venv\\Scripts\\python.exe",
-    // Inclui a pasta do projeto Django no path de analise para evitar avisos falsos de importacao.
+    // Evita fixar um interpretador de um SO especifico no repositorio.
+    // Cada maquina deve selecionar o proprio .venv local no VS Code.
     "python.analysis.extraPaths": [
-        "${workspaceFolder}\\ServiceDesk",
-        "${workspaceFolder}\\ServiceDesk\\ServiceDesk"
+        "${workspaceFolder}/ServiceDesk",
+        "${workspaceFolder}/ServiceDesk/ServiceDesk"
     ],
-    // Ignora os ambientes Linux legados (venv/bin) que causam conflito de analise no Windows.
     "python.analysis.exclude": [
-        "**/venv/**"
+        "**/venv/**",
+        "**/.venv/**"
     ],
-    // Garante que o terminal integrado use o ambiente configurado no projeto.
     "python.terminal.activateEnvironment": true
 }

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Chamado, Comentario
+from .models import Chamado, Comentario, Notificacao
 
 
 @admin.register(Chamado)
@@ -18,3 +18,11 @@ class ComentarioAdmin(admin.ModelAdmin):
     list_display = ("id", "chamado", "usuario", "data")
     list_filter = ("data",)
     search_fields = ("texto", "usuario__username", "chamado__titulo")
+
+
+@admin.register(Notificacao)
+class NotificacaoAdmin(admin.ModelAdmin):
+    # Exibe notificacoes persistidas para auditoria do fluxo de status.
+    list_display = ("id", "tipo", "usuario", "chamado", "lida", "criada_em")
+    list_filter = ("tipo", "lida", "criada_em")
+    search_fields = ("mensagem", "usuario__username", "chamado__titulo")
