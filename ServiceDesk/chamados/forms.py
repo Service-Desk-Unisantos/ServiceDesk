@@ -38,6 +38,13 @@ class CadastroUsuarioForm(UserCreationForm):
             "password2": "Confirmacao da senha",
         }
 
+    def __init__(self, *args, **kwargs):
+        # Aplica classe padrao para garantir alinhamento correto dos campos no frontend.
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            classes_atuais = field.widget.attrs.get("class", "")
+            field.widget.attrs["class"] = f"{classes_atuais} form-control".strip()
+
 
 class LoginUsuarioForm(AuthenticationForm):
     username = forms.CharField(
@@ -49,3 +56,21 @@ class LoginUsuarioForm(AuthenticationForm):
             }
         ),
     )
+    # Campo de senha explicito para manter placeholder e compatibilidade com botao de olho.
+    password = forms.CharField(
+        label="Senha",
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "autocomplete": "current-password",
+                "placeholder": "Digite sua senha",
+            }
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Aplica classe padrao para o layout dos campos de login e do toggle de senha.
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            classes_atuais = field.widget.attrs.get("class", "")
+            field.widget.attrs["class"] = f"{classes_atuais} form-control".strip()

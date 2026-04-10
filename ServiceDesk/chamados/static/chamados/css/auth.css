@@ -21,3 +21,35 @@
 .auth-card--cadastro {
     max-width: 560px;
 }
+
+/* Mantem input e botao de senha na mesma linha dentro do input-group. */
+.senha-toggle-group {
+    flex-wrap: nowrap;
+}
+
+/* Sobrescreve width global do input para evitar quebra de layout no campo de senha. */
+.senha-toggle-group input.form-control {
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+}
+
+/* Ajusta o grupo de senha para integrar input e botao de olho. */
+.senha-toggle-group input {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Padroniza o botao de mostrar/ocultar senha com o tema atual. */
+.senha-toggle-group .senha-toggle-botao {
+    border-color: var(--sd-border);
+    border-left: 0;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+/* Mantem feedback visual de foco no botao de senha. */
+.senha-toggle-group .senha-toggle-botao:focus {
+    box-shadow: 0 0 0 0.2rem var(--sd-primary-soft);
+    z-index: 3;
+}
