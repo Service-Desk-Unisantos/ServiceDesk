@@ -11,4 +11,10 @@ urlpatterns = [
     path("logout/", views.logout_usuario, name="logout_usuario"),
     # Registro de novos chamados (RF03).
     path("novo/", views.criar_chamado, name="criar_chamado"),
+    # Historico individual de chamados para perfil cliente.
+    path(
+        "meus-chamados/",
+        views.historico_chamados_cliente,
+        name="historico_chamados_cliente",
+    ),
 ]

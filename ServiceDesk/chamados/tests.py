@@ -35,14 +35,18 @@ class FluxoAutenticacaoTests(TestCase):
         self.assertRedirects(response, reverse("lista_chamados"))
 
     def test_rotas_protegidas_redirecionam_para_login(self):
-        # Garantia de seguranca: sem login, o usuario nao acessa o painel/novo chamado.
+        # Garantia de seguranca: sem login, o usuario nao acessa painel, novo chamado e historico.
         response_lista = self.client.get(reverse("lista_chamados"))
         response_novo = self.client.get(reverse("criar_chamado"))
+        # Nova rota de historico individual tambem fica protegida por autenticacao.
+        response_historico = self.client.get(reverse("historico_chamados_cliente"))
 
         self.assertEqual(response_lista.status_code, 302)
         self.assertIn(reverse("login_usuario"), response_lista.url)
         self.assertEqual(response_novo.status_code, 302)
         self.assertIn(reverse("login_usuario"), response_novo.url)
+        self.assertEqual(response_historico.status_code, 302)
+        self.assertIn(reverse("login_usuario"), response_historico.url)
 
 
 class ChamadosTests(TestCase):
@@ -55,8 +59,17 @@ class ChamadosTests(TestCase):
             username="tecnico", password="SenhaForte123!", is_staff=True
         )
 
-    def test_usuario_comum_visualiza_apenas_proprios_chamados(self):
-        # RF04: usuario comum visualiza apenas os chamados que ele criou.
+    def test_usuario_comum_nao_visualiza_painel_admin_na_home(self):
+        # Perfil cliente nao deve ver painel administrativo na tela inicial.
+        self.client.login(username="cliente", password="SenhaForte123!")
+        response = self.client.get(reverse("lista_chamados"))
+
+        # Valida que o cliente recebe os cards de acao e nao o painel admin.
+        self.assertContains(response, "historico de chamados")
+        self.assertNotContains(response, "Painel de chamados")
+
+    def test_usuario_comum_visualiza_apenas_proprios_chamados_no_historico(self):
+        # Historico do cliente deve conter somente chamados dele.
         Chamado.objects.create(
             titulo="Chamado do cliente",
             descricao="Descricao A",
@@ -73,10 +86,18 @@ class ChamadosTests(TestCase):
         )
 
         self.client.login(username="cliente", password="SenhaForte123!")
-        response = self.client.get(reverse("lista_chamados"))
+        # Nova rota de historico individual do cliente.
+        response = self.client.get(reverse("historico_chamados_cliente"))
 
         self.assertContains(response, "Chamado do cliente")
         self.assertNotContains(response, "Chamado de outro usuario")
+
+    def test_staff_e_redirecionado_ao_tentar_abrir_historico_cliente(self):
+        # Rotina evita que admin use a tela exclusiva de historico do cliente.
+        self.client.login(username="tecnico", password="SenhaForte123!")
+        response = self.client.get(reverse("historico_chamados_cliente"))
+
+        self.assertRedirects(response, reverse("lista_chamados"))
 
     def test_staff_visualiza_todos_os_chamados(self):
         # RF04: perfil tecnico/admin pode acompanhar todos os chamados.

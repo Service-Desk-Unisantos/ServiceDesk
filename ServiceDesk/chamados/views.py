@@ -98,12 +98,34 @@ def criar_chamado(request):
 @login_required
 def lista_chamados(request):
     # Regra de negocio:
-    # - staff (tecnico/admin) enxerga todos os chamados
-    # - usuario comum enxerga apenas os proprios chamados
+    # - staff (tecnico/admin) enxerga todos os chamados no painel
+    # - cliente nao recebe lista no painel inicial (usa area de atalhos)
     if request.user.is_staff:
         chamados = Chamado.objects.all()
     else:
-        chamados = Chamado.objects.filter(usuario=request.user)
+        # Evita enviar historico de chamados para o template de painel do cliente.
+        chamados = Chamado.objects.none()
 
     # Envia a lista para o template do painel.
     return render(request, "chamados/lista.html", {"chamados": chamados})
+
+
+@login_required
+def historico_chamados_cliente(request):
+    # Esta tela foi criada para o perfil cliente consultar somente os proprios chamados.
+    if request.user.is_staff or request.user.is_superuser:
+        # Perfil admin continua no painel principal de acompanhamento geral.
+        messages.info(
+            request,
+            "O historico individual e destinado ao perfil cliente.",
+        )
+        return redirect("lista_chamados")
+
+    # Filtro de seguranca: retorna apenas os chamados do usuario autenticado.
+    chamados = Chamado.objects.filter(usuario=request.user)
+    # Renderiza a nova pagina de historico individual.
+    return render(
+        request,
+        "chamados/historico_cliente.html",
+        {"chamados": chamados},
+    )
