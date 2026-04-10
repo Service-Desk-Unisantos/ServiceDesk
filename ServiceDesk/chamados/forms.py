@@ -74,3 +74,35 @@ class LoginUsuarioForm(AuthenticationForm):
         for field in self.fields.values():
             classes_atuais = field.widget.attrs.get("class", "")
             field.widget.attrs["class"] = f"{classes_atuais} form-control".strip()
+
+
+class AtualizacaoChamadoAdminForm(forms.Form):
+    # Campos que a equipe de infra pode atualizar durante o atendimento.
+    status = forms.ChoiceField(choices=Chamado.STATUS_CHOICES, label="Status")
+    prioridade = forms.ChoiceField(
+        choices=Chamado.PRIORIDADE_CHOICES,
+        label="Prioridade",
+    )
+    # Campo opcional para registrar resposta tecnica no historico do chamado.
+    resposta = forms.CharField(
+        label="Resposta da equipe",
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "placeholder": "Descreva a analise, orientacao ou solucao aplicada",
+            }
+        ),
+    )
+
+    def __init__(self, *args, chamado=None, **kwargs):
+        # Inicializa o formulario com os valores atuais do chamado selecionado.
+        super().__init__(*args, **kwargs)
+        if chamado is not None:
+            self.fields["status"].initial = chamado.status
+            self.fields["prioridade"].initial = chamado.prioridade
+
+        # Aplica classes visuais para manter consistencia com o template Bootstrap.
+        self.fields["status"].widget.attrs["class"] = "form-select"
+        self.fields["prioridade"].widget.attrs["class"] = "form-select"
+        self.fields["resposta"].widget.attrs["class"] = "form-control"

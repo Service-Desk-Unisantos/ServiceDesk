@@ -1,0 +1,15 @@
+{
+    // Usa o ambiente virtual local valido para o Windows.
+    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+    // Ajuda o Pylance a resolver imports do pacote principal ServiceDesk e do app chamados.
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}",
+        "${workspaceFolder}\\ServiceDesk"
+    ],
+    // Evita leitura do venv Linux legado que existe no repositorio.
+    "python.analysis.exclude": [
+        "**/venv/**"
+    ],
+    // Mantem o ambiente selecionado ativo no terminal integrado.
+    "python.terminal.activateEnvironment": true
+}

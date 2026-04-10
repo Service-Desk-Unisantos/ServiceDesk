@@ -121,8 +121,10 @@
                                             <span class="badge bg-primary">Aberto</span>
                                         {% elif chamado.status == 'andamento' %}
                                             <span class="badge bg-warning text-dark">Em andamento</span>
+                                        {% elif chamado.status == 'concluido' %}
+                                            <span class="badge bg-success">Concluido</span>
                                         {% else %}
-                                            <span class="badge bg-success">Fechado</span>
+                                            <span class="badge bg-secondary">Status indefinido</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-muted small">{{ chamado.data_criacao|date:"d/m/Y H:i" }}</td>

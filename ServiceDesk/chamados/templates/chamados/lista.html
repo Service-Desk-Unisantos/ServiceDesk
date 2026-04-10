@@ -234,8 +234,10 @@
                                             <span class="badge bg-primary">Aberto</span>
                                         {% elif chamado.status == 'andamento' %}
                                             <span class="badge bg-warning text-dark">Em andamento</span>
+                                        {% elif chamado.status == 'concluido' %}
+                                            <span class="badge bg-success">Concluido</span>
                                         {% else %}
-                                            <span class="badge bg-success">Fechado</span>
+                                            <span class="badge bg-secondary">Status indefinido</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-muted small">{{ chamado.data_criacao|date:"d/m/Y H:i" }}</td>
@@ -264,9 +266,57 @@
                                                         <div class="caixa-descricao mt-2">
                                                             <p>{{ chamado.descricao|linebreaksbr }}</p>
                                                         </div>
+
+                                                        <!-- Historico de respostas tecnicas ja registradas no chamado. -->
+                                                        <div class="mt-4">
+                                                            <h6 class="rotulo-secao fw-bold text-dark text-uppercase mb-2">Respostas da equipe</h6>
+                                                            {% for comentario in chamado.comentarios.all %}
+                                                                <div class="border rounded p-2 mb-2 bg-light">
+                                                                    <p class="mb-1 small">
+                                                                        <strong>{{ comentario.usuario.username }}</strong>
+                                                                        <span class="text-muted">em {{ comentario.data|date:"d/m/Y H:i" }}</span>
+                                                                    </p>
+                                                                    <p class="mb-0 small">{{ comentario.texto|linebreaksbr }}</p>
+                                                                </div>
+                                                            {% empty %}
+                                                                <p class="text-muted small mb-0">Nenhuma resposta registrada ate o momento.</p>
+                                                            {% endfor %}
+                                                        </div>
                                                     </div>
                                                     <div class="modal-footer bg-light border-0">
-                                                        <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">Fechar</button>
+                                                        <!-- Formulario de atendimento para a equipe de infra atualizar chamado. -->
+                                                        <form method="post" action="{% url 'atualizar_chamado_admin' chamado.id %}" class="w-100">
+                                                            {% csrf_token %}
+                                                            <div class="mb-2">
+                                                                <label class="form-label small fw-bold mb-1">Status</label>
+                                                                <select name="status" class="form-select form-select-sm">
+                                                                    <option value="aberto" {% if chamado.status == 'aberto' %}selected{% endif %}>Aberto</option>
+                                                                    <option value="andamento" {% if chamado.status == 'andamento' %}selected{% endif %}>Em andamento</option>
+                                                                    <option value="concluido" {% if chamado.status == 'concluido' %}selected{% endif %}>Concluido</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <label class="form-label small fw-bold mb-1">Prioridade</label>
+                                                                <select name="prioridade" class="form-select form-select-sm">
+                                                                    <option value="baixa" {% if chamado.prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
+                                                                    <option value="media" {% if chamado.prioridade == 'media' %}selected{% endif %}>Media</option>
+                                                                    <option value="alta" {% if chamado.prioridade == 'alta' %}selected{% endif %}>Alta</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label small fw-bold mb-1">Resposta da equipe</label>
+                                                                <textarea
+                                                                    name="resposta"
+                                                                    class="form-control form-control-sm"
+                                                                    rows="3"
+                                                                    placeholder="Escreva uma resposta tecnica para o chamado (opcional)"
+                                                                ></textarea>
+                                                            </div>
+                                                            <div class="d-flex gap-2">
+                                                                <button type="button" class="btn btn-secondary fw-bold w-50" data-bs-dismiss="modal">Fechar</button>
+                                                                <button type="submit" class="btn btn-primary fw-bold w-50">Salvar atendimento</button>
+                                                            </div>
+                                                        </form>
                                                     </div>
                                                 </div>
                                             </div>

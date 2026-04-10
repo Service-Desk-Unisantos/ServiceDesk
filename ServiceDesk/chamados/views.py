@@ -1,11 +1,16 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from .forms import CadastroUsuarioForm, ChamadoForm, LoginUsuarioForm
-from .models import Chamado
+from .forms import (
+    AtualizacaoChamadoAdminForm,
+    CadastroUsuarioForm,
+    ChamadoForm,
+    LoginUsuarioForm,
+)
+from .models import Chamado, Comentario
 
 
 def _destino_pos_login(request):
@@ -100,13 +105,50 @@ def lista_chamados(request):
     # - staff (tecnico/admin) enxerga todos os chamados no painel
     # - cliente nao recebe lista no painel inicial (usa area de atalhos)
     if request.user.is_staff:
-        chamados = Chamado.objects.all()
+        # Carrega comentarios junto para exibir historico de respostas no modal admin.
+        chamados = Chamado.objects.all().prefetch_related("comentarios__usuario")
     else:
         # Evita enviar historico de chamados para o template de painel do cliente.
         chamados = Chamado.objects.none()
 
     # Envia a lista para o template do painel.
     return render(request, "chamados/lista.html", {"chamados": chamados})
+
+
+@login_required
+def atualizar_chamado_admin(request, chamado_id):
+    # Apenas equipe de infra (staff/admin) pode atualizar status, prioridade e resposta.
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Somente a equipe de infra pode atualizar chamados.")
+        return redirect("lista_chamados")
+
+    # Recupera o chamado selecionado para atualizar os dados de atendimento.
+    chamado = get_object_or_404(Chamado, id=chamado_id)
+    if request.method != "POST":
+        return redirect("lista_chamados")
+
+    # Valida os dados enviados no formulario de atendimento do modal.
+    form = AtualizacaoChamadoAdminForm(request.POST, chamado=chamado)
+    if not form.is_valid():
+        messages.error(request, "Nao foi possivel atualizar o chamado.")
+        return redirect("lista_chamados")
+
+    # Salva as alteracoes operacionais feitas pela equipe de infra.
+    chamado.status = form.cleaned_data["status"]
+    chamado.prioridade = form.cleaned_data["prioridade"]
+    chamado.save(update_fields=["status", "prioridade"])
+
+    # Registra resposta textual no historico quando preenchida.
+    resposta = form.cleaned_data["resposta"].strip()
+    if resposta:
+        Comentario.objects.create(
+            chamado=chamado,
+            usuario=request.user,
+            texto=resposta,
+        )
+
+    messages.success(request, "Chamado atualizado com sucesso.")
+    return redirect("lista_chamados")
 
 
 @login_required

@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Chamado
+from .models import Chamado, Comentario
 
 
 class FluxoAutenticacaoTests(TestCase):
@@ -140,6 +140,66 @@ class ChamadosTests(TestCase):
         self.assertContains(response, "Chamado B")
         # RF05: status deve aparecer no painel para acompanhamento.
         self.assertContains(response, "Em andamento")
+
+    def test_staff_atualiza_status_prioridade_e_registra_resposta(self):
+        # Equipe de infra pode atualizar atendimento e registrar resposta tecnica.
+        chamado = Chamado.objects.create(
+            titulo="Erro no e-mail",
+            descricao="Caixa postal indisponivel.",
+            categoria="acesso",
+            prioridade="baixa",
+            status="aberto",
+            usuario=self.usuario,
+        )
+
+        self.client.login(username="tecnico", password="SenhaForte123!")
+        response = self.client.post(
+            reverse("atualizar_chamado_admin", args=[chamado.id]),
+            {
+                "status": "concluido",
+                "prioridade": "alta",
+                "resposta": "Conta revisada e servico normalizado.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("lista_chamados"))
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, "concluido")
+        self.assertEqual(chamado.prioridade, "alta")
+        self.assertTrue(
+            Comentario.objects.filter(
+                chamado=chamado,
+                usuario=self.staff,
+                texto="Conta revisada e servico normalizado.",
+            ).exists()
+        )
+
+    def test_cliente_nao_pode_atualizar_chamado_admin(self):
+        # Cliente nao pode alterar status/prioridade nem responder como infra.
+        chamado = Chamado.objects.create(
+            titulo="Sem internet",
+            descricao="Rede indisponivel.",
+            categoria="rede",
+            prioridade="media",
+            status="aberto",
+            usuario=self.usuario,
+        )
+
+        self.client.login(username="cliente", password="SenhaForte123!")
+        response = self.client.post(
+            reverse("atualizar_chamado_admin", args=[chamado.id]),
+            {
+                "status": "concluido",
+                "prioridade": "alta",
+                "resposta": "Tentativa invalida de atualizacao.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("lista_chamados"))
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, "aberto")
+        self.assertEqual(chamado.prioridade, "media")
+        self.assertFalse(Comentario.objects.filter(chamado=chamado).exists())
 
     def test_registro_de_chamado_salva_categoria(self):
         # RF03: registro inclui titulo, descricao e categoria.

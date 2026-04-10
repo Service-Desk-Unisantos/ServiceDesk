@@ -7,7 +7,7 @@ class Chamado(models.Model):
     STATUS_CHOICES = [
         ("aberto", "Aberto"),
         ("andamento", "Em andamento"),
-        ("fechado", "Fechado"),
+        ("concluido", "Concluido"),
     ]
 
     # Prioridade definida no momento da abertura do chamado.
