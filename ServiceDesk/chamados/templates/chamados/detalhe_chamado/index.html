@@ -1,0 +1,162 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Desk | Detalhes do chamado</title>
+
+    <!-- Bootstrap para manter consistencia visual com as demais telas. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        .navbar {
+            border-bottom: 3px solid #0d6efd;
+        }
+
+        /* Caixa de destaque da descricao principal do chamado. */
+        .caixa-descricao {
+            background-color: #f8f9fa;
+            border-left: 5px solid #0d6efd;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            color: #333;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Cartao de cada interacao registrada pela equipe de infra. */
+        .resposta-card {
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navbar padrao com identificacao do usuario logado e logout. -->
+    <nav class="navbar navbar-dark bg-dark mb-4 shadow">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{% url 'lista_chamados' %}">
+                <i class="bi bi-headset me-2 text-primary"></i>ServiceDesk Facul
+            </a>
+            <div class="text-white d-flex align-items-center">
+                <span class="me-2 small text-white-50">Logado como:</span>
+                <span class="fw-bold me-3 text-info">{{ user.username }}</span>
+                <span class="badge bg-danger shadow-sm px-3 py-2">
+                    <i class="bi bi-shield-lock-fill me-1"></i>ADMINISTRADOR
+                </span>
+                <a href="{% url 'logout_usuario' %}" class="ms-3 btn btn-sm btn-outline-danger border-0 fw-bold">
+                    <i class="bi bi-box-arrow-right fs-5"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Caixa fixa onde o JavaScript exibe as notificacoes em tempo real. -->
+    <div
+        id="caixa-notificacoes"
+        class="position-fixed top-0 end-0 p-3"
+        style="z-index: 1080; width: min(92vw, 380px);"
+    ></div>
+
+    <main class="container pb-5">
+        <!-- Feedback visual para confirmacao de atualizacoes no atendimento. -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Cabecalho da tela de detalhe com retorno para o painel principal. -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h4 class="mb-1 fw-bold text-primary">Chamado #{{ chamado.id }}</h4>
+                <p class="mb-0 text-muted">{{ chamado.titulo }}</p>
+            </div>
+            <a href="{% url 'lista_chamados' %}" class="btn btn-outline-secondary fw-bold">
+                <i class="bi bi-arrow-left me-1"></i>Voltar ao painel
+            </a>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-8">
+                <!-- Bloco com os dados principais do chamado selecionado. -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <p class="mb-2"><strong>Cliente:</strong> {{ chamado.usuario.username }}</p>
+                        <p class="mb-2"><strong>Categoria:</strong> {{ chamado.get_categoria_display }}</p>
+                        <p class="mb-2"><strong>Prioridade:</strong> {{ chamado.get_prioridade_display }}</p>
+                        <p class="mb-3"><strong>Abertura:</strong> {{ chamado.data_criacao|date:"d/m/Y H:i" }}</p>
+
+                        <h6 class="fw-bold text-dark text-uppercase mb-2">Descricao</h6>
+                        <div class="caixa-descricao">
+                            {{ chamado.descricao|linebreaksbr }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historico de respostas tecnicas para contexto do atendimento. -->
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold text-dark text-uppercase mb-3">Respostas da equipe</h6>
+                        {% for comentario in chamado.comentarios.all %}
+                            <article class="resposta-card p-3 mb-2">
+                                <p class="mb-1 small">
+                                    <strong>{{ comentario.usuario.username }}</strong>
+                                    <span class="text-muted">em {{ comentario.data|date:"d/m/Y H:i" }}</span>
+                                </p>
+                                <p class="mb-0">{{ comentario.texto|linebreaksbr }}</p>
+                            </article>
+                        {% empty %}
+                            <p class="text-muted mb-0">Nenhuma resposta registrada ate o momento.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4">
+                <!-- Formulario de atendimento para atualizar status/prioridade e responder chamado. -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold text-dark text-uppercase mb-3">Atualizar atendimento</h6>
+                        <form method="post" action="{% url 'atualizar_chamado_admin' chamado.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold mb-1">Status</label>
+                                {{ form_atualizacao.status }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold mb-1">Prioridade</label>
+                                {{ form_atualizacao.prioridade }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold mb-1">Resposta da equipe</label>
+                                {{ form_atualizacao.resposta }}
+                            </div>
+                            <button type="submit" class="btn btn-primary fw-bold w-100">
+                                Salvar atendimento
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuracao global consumida pelo script de notificacoes via socket.
+        window.SOCKET_NOTIFICACAO_URL = "ws://127.0.0.1:8765";
+        window.USUARIO_LOGADO_ID = {{ user.id|default:"0" }};
+        window.USUARIO_EH_ADMIN = true;
+    </script>
+    <!-- Script que conecta ao servidor socket e mostra alertas em tempo real. -->
+    <script src="{% static 'chamados/js/notificacoes_socket.js' %}"></script>
+</body>
+</html>

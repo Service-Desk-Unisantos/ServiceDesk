@@ -39,7 +39,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "ServiceDesk.urls"
+ROOT_URLCONF = "ConfigDjango.urls"
 
 TEMPLATES = [
     {
@@ -56,7 +56,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "ServiceDesk.wsgi.application"
+WSGI_APPLICATION = "ConfigDjango.wsgi.application"
 
 
 # Database
@@ -86,6 +86,9 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = "/static/"
+
+# URL do servidor de notificacao em tempo real via WebSocket.
+SOCKET_NOTIFICACAO_URL = "ws://127.0.0.1:8765"
 
 AUTHENTICATION_BACKENDS = [
     "chamados.backends.EmailOuUsuarioBackend",

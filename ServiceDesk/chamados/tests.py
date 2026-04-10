@@ -141,6 +141,40 @@ class ChamadosTests(TestCase):
         # RF05: status deve aparecer no painel para acompanhamento.
         self.assertContains(response, "Em andamento")
 
+    def test_staff_visualiza_detalhe_em_rota_dedicada(self):
+        # Visualizacao de chamado para equipe de infra deve ocorrer em pagina propria.
+        chamado = Chamado.objects.create(
+            titulo="Chamado detalhe",
+            descricao="Descricao para pagina dedicada.",
+            categoria="software",
+            prioridade="media",
+            status="aberto",
+            usuario=self.usuario,
+        )
+
+        self.client.login(username="tecnico", password="SenhaForte123!")
+        response = self.client.get(reverse("detalhe_chamado_admin", args=[chamado.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Chamado detalhe")
+        self.assertContains(response, "Atualizar atendimento")
+
+    def test_cliente_nao_pode_visualizar_detalhe_admin(self):
+        # Cliente deve ser bloqueado ao tentar abrir rota de detalhe administrativo.
+        chamado = Chamado.objects.create(
+            titulo="Restrito admin",
+            descricao="Somente equipe de infra.",
+            categoria="rede",
+            prioridade="baixa",
+            status="aberto",
+            usuario=self.usuario,
+        )
+
+        self.client.login(username="cliente", password="SenhaForte123!")
+        response = self.client.get(reverse("detalhe_chamado_admin", args=[chamado.id]))
+
+        self.assertRedirects(response, reverse("lista_chamados"))
+
     def test_staff_atualiza_status_prioridade_e_registra_resposta(self):
         # Equipe de infra pode atualizar atendimento e registrar resposta tecnica.
         chamado = Chamado.objects.create(
@@ -162,7 +196,7 @@ class ChamadosTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("lista_chamados"))
+        self.assertRedirects(response, reverse("detalhe_chamado_admin", args=[chamado.id]))
         chamado.refresh_from_db()
         self.assertEqual(chamado.status, "concluido")
         self.assertEqual(chamado.prioridade, "alta")

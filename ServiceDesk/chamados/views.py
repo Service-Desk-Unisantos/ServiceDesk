@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -11,6 +12,13 @@ from .forms import (
     LoginUsuarioForm,
 )
 from .models import Chamado, Comentario
+
+import json
+import logging
+
+
+# Logger simples para registrar falhas nao bloqueantes de notificacao.
+logger = logging.getLogger(__name__)
 
 
 def _destino_pos_login(request):
@@ -23,6 +31,41 @@ def _destino_pos_login(request):
     ):
         return destino
     return "lista_chamados"
+
+
+def enviar_notificacao_status_chamado(chamado):
+    # Monta mensagem simples no formato solicitado para notificacao em tempo real.
+    mensagem = (
+        f"Seu chamado #{chamado.id} foi atualizado para "
+        f"{chamado.get_status_display().upper()}"
+    )
+    payload = {
+        "tipo": "status_chamado",
+        "chamado_id": chamado.id,
+        "usuario_id": chamado.usuario_id,
+        "status": chamado.status,
+        "mensagem": mensagem,
+    }
+
+    # Import local evita quebrar o Django caso a lib websocket nao esteja instalada.
+    try:
+        from websockets.sync.client import connect
+    except Exception as exc:
+        logger.info(
+            "Biblioteca websockets indisponivel; notificacao nao enviada. Erro: %s",
+            exc,
+        )
+        return
+
+    # Envia a notificacao para o servidor socket separado do Django.
+    try:
+        with connect(settings.SOCKET_NOTIFICACAO_URL, open_timeout=0.5) as websocket:
+            websocket.send(json.dumps(payload, ensure_ascii=False))
+    except Exception as exc:
+        logger.info(
+            "Falha ao enviar notificacao para o servidor socket: %s",
+            exc,
+        )
 
 
 def login_usuario(request):
@@ -42,7 +85,8 @@ def login_usuario(request):
 
     return render(
         request,
-        "chamados/login.html",
+        # Template organizado por pasta da rota de login.
+        "chamados/login/index.html",
         {"form": form, "next": request.GET.get("next", "")},
     )
 
@@ -64,7 +108,8 @@ def cadastro_usuario(request):
     else:
         form = CadastroUsuarioForm()
 
-    return render(request, "chamados/cadastro.html", {"form": form})
+    # Template organizado por pasta da rota de cadastro.
+    return render(request, "chamados/cadastro/index.html", {"form": form})
 
 
 @login_required
@@ -96,7 +141,8 @@ def criar_chamado(request):
         form = ChamadoForm()
 
     # Renderiza a pagina de abertura de chamado.
-    return render(request, "chamados/criar.html", {"form": form})
+    # Template organizado por pasta da rota de novo chamado.
+    return render(request, "chamados/novo/index.html", {"form": form})
 
 
 @login_required
@@ -105,14 +151,37 @@ def lista_chamados(request):
     # - staff (tecnico/admin) enxerga todos os chamados no painel
     # - cliente nao recebe lista no painel inicial (usa area de atalhos)
     if request.user.is_staff:
-        # Carrega comentarios junto para exibir historico de respostas no modal admin.
-        chamados = Chamado.objects.all().prefetch_related("comentarios__usuario")
+        # Lista geral de chamados para acompanhamento inicial do time de infra.
+        chamados = Chamado.objects.all()
     else:
         # Evita enviar historico de chamados para o template de painel do cliente.
         chamados = Chamado.objects.none()
 
     # Envia a lista para o template do painel.
-    return render(request, "chamados/lista.html", {"chamados": chamados})
+    # Template organizado por pasta da rota principal do painel.
+    return render(request, "chamados/lista/index.html", {"chamados": chamados})
+
+
+@login_required
+def detalhe_chamado_admin(request, chamado_id):
+    # Apenas equipe de infra (staff/admin) pode acessar o detalhe operacional do chamado.
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Somente a equipe de infra pode visualizar este chamado.")
+        return redirect("lista_chamados")
+
+    # Busca o chamado com comentarios e usuario para exibir historico completo na tela dedicada.
+    chamado = get_object_or_404(
+        Chamado.objects.select_related("usuario").prefetch_related("comentarios__usuario"),
+        id=chamado_id,
+    )
+    # Formulario inicial para atualizar status/prioridade e responder o chamado.
+    form_atualizacao = AtualizacaoChamadoAdminForm(chamado=chamado)
+    return render(
+        request,
+        # Template organizado por pasta da rota de detalhe do chamado.
+        "chamados/detalhe_chamado/index.html",
+        {"chamado": chamado, "form_atualizacao": form_atualizacao},
+    )
 
 
 @login_required
@@ -125,13 +194,16 @@ def atualizar_chamado_admin(request, chamado_id):
     # Recupera o chamado selecionado para atualizar os dados de atendimento.
     chamado = get_object_or_404(Chamado, id=chamado_id)
     if request.method != "POST":
-        return redirect("lista_chamados")
+        return redirect("detalhe_chamado_admin", chamado_id=chamado.id)
 
-    # Valida os dados enviados no formulario de atendimento do modal.
+    # Valida os dados enviados no formulario de atendimento da tela de detalhe.
     form = AtualizacaoChamadoAdminForm(request.POST, chamado=chamado)
     if not form.is_valid():
         messages.error(request, "Nao foi possivel atualizar o chamado.")
-        return redirect("lista_chamados")
+        return redirect("detalhe_chamado_admin", chamado_id=chamado.id)
+
+    # Guarda status anterior para notificar somente quando houver mudanca real.
+    status_anterior = chamado.status
 
     # Salva as alteracoes operacionais feitas pela equipe de infra.
     chamado.status = form.cleaned_data["status"]
@@ -147,8 +219,12 @@ def atualizar_chamado_admin(request, chamado_id):
             texto=resposta,
         )
 
+    # Dispara notificacao em tempo real para o usuario dono do chamado.
+    if status_anterior != chamado.status:
+        enviar_notificacao_status_chamado(chamado)
+
     messages.success(request, "Chamado atualizado com sucesso.")
-    return redirect("lista_chamados")
+    return redirect("detalhe_chamado_admin", chamado_id=chamado.id)
 
 
 @login_required
@@ -167,6 +243,7 @@ def historico_chamados_cliente(request):
     # Renderiza a nova pagina de historico individual.
     return render(
         request,
-        "chamados/historico_cliente.html",
+        # Template organizado por pasta da rota de historico do cliente.
+        "chamados/meus_chamados/index.html",
         {"chamados": chamados},
     )

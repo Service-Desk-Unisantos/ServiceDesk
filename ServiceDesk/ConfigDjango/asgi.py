@@ -11,6 +11,7 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ServiceDesk.settings')
+# Aponta para o modulo correto de settings apos organizacao da pasta de config.
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ConfigDjango.settings')
 
 application = get_asgi_application()

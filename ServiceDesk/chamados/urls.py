@@ -11,6 +11,12 @@ urlpatterns = [
     path("logout/", views.logout_usuario, name="logout_usuario"),
     # Registro de novos chamados (RF03).
     path("novo/", views.criar_chamado, name="criar_chamado"),
+    # Tela dedicada de visualizacao para equipe de infra.
+    path(
+        "chamado/<int:chamado_id>/",
+        views.detalhe_chamado_admin,
+        name="detalhe_chamado_admin",
+    ),
     # Atualizacao operacional de chamado para equipe de infra.
     path(
         "chamado/<int:chamado_id>/atualizar/",

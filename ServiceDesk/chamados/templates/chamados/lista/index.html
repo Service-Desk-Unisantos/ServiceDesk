@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -117,6 +118,13 @@
             </div>
         </div>
     </nav>
+
+    <!-- Caixa fixa onde o JavaScript exibe as notificacoes em tempo real. -->
+    <div
+        id="caixa-notificacoes"
+        class="position-fixed top-0 end-0 p-3"
+        style="z-index: 1080; width: min(92vw, 380px);"
+    ></div>
 
     <main class="container">
         <!-- Feedback visual das acoes (login, cadastro, novo chamado etc.) -->
@@ -242,85 +250,10 @@
                                     </td>
                                     <td class="text-muted small">{{ chamado.data_criacao|date:"d/m/Y H:i" }}</td>
                                     <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-primary px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modal{{ chamado.id }}">
+                                        <!-- Link para a nova tela de detalhes do chamado para equipe de infra. -->
+                                        <a href="{% url 'detalhe_chamado_admin' chamado.id %}" class="btn btn-sm btn-outline-primary px-3 fw-bold">
                                             Visualizar
-                                        </button>
-
-                                        <!-- Modal para visualizar detalhes completos do chamado -->
-                                        <div class="modal fade" id="modal{{ chamado.id }}" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content border-0 shadow-lg">
-                                                    <div class="modal-header bg-dark text-white">
-                                                        <h5 class="modal-title fw-bold">Detalhes do chamado #{{ chamado.id }}</h5>
-                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body p-4 text-start">
-                                                        <h4 class="fw-bold mb-1 text-primary">{{ chamado.titulo }}</h4>
-                                                        <p class="text-muted small mb-3">
-                                                            Aberto por: <strong>{{ chamado.usuario.username }}</strong><br>
-                                                            Em: {{ chamado.data_criacao|date:"d/m/Y H:i" }}
-                                                        </p>
-                                                        <p class="mb-2"><strong>Categoria:</strong> {{ chamado.get_categoria_display }}</p>
-                                                        <p class="mb-3"><strong>Status:</strong> {{ chamado.get_status_display }}</p>
-                                                        <h6 class="rotulo-secao fw-bold text-dark text-uppercase mb-2">Descricao</h6>
-                                                        <div class="caixa-descricao mt-2">
-                                                            <p>{{ chamado.descricao|linebreaksbr }}</p>
-                                                        </div>
-
-                                                        <!-- Historico de respostas tecnicas ja registradas no chamado. -->
-                                                        <div class="mt-4">
-                                                            <h6 class="rotulo-secao fw-bold text-dark text-uppercase mb-2">Respostas da equipe</h6>
-                                                            {% for comentario in chamado.comentarios.all %}
-                                                                <div class="border rounded p-2 mb-2 bg-light">
-                                                                    <p class="mb-1 small">
-                                                                        <strong>{{ comentario.usuario.username }}</strong>
-                                                                        <span class="text-muted">em {{ comentario.data|date:"d/m/Y H:i" }}</span>
-                                                                    </p>
-                                                                    <p class="mb-0 small">{{ comentario.texto|linebreaksbr }}</p>
-                                                                </div>
-                                                            {% empty %}
-                                                                <p class="text-muted small mb-0">Nenhuma resposta registrada ate o momento.</p>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer bg-light border-0">
-                                                        <!-- Formulario de atendimento para a equipe de infra atualizar chamado. -->
-                                                        <form method="post" action="{% url 'atualizar_chamado_admin' chamado.id %}" class="w-100">
-                                                            {% csrf_token %}
-                                                            <div class="mb-2">
-                                                                <label class="form-label small fw-bold mb-1">Status</label>
-                                                                <select name="status" class="form-select form-select-sm">
-                                                                    <option value="aberto" {% if chamado.status == 'aberto' %}selected{% endif %}>Aberto</option>
-                                                                    <option value="andamento" {% if chamado.status == 'andamento' %}selected{% endif %}>Em andamento</option>
-                                                                    <option value="concluido" {% if chamado.status == 'concluido' %}selected{% endif %}>Concluido</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="mb-2">
-                                                                <label class="form-label small fw-bold mb-1">Prioridade</label>
-                                                                <select name="prioridade" class="form-select form-select-sm">
-                                                                    <option value="baixa" {% if chamado.prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
-                                                                    <option value="media" {% if chamado.prioridade == 'media' %}selected{% endif %}>Media</option>
-                                                                    <option value="alta" {% if chamado.prioridade == 'alta' %}selected{% endif %}>Alta</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label small fw-bold mb-1">Resposta da equipe</label>
-                                                                <textarea
-                                                                    name="resposta"
-                                                                    class="form-control form-control-sm"
-                                                                    rows="3"
-                                                                    placeholder="Escreva uma resposta tecnica para o chamado (opcional)"
-                                                                ></textarea>
-                                                            </div>
-                                                            <div class="d-flex gap-2">
-                                                                <button type="button" class="btn btn-secondary fw-bold w-50" data-bs-dismiss="modal">Fechar</button>
-                                                                <button type="submit" class="btn btn-primary fw-bold w-50">Salvar atendimento</button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        </a>
                                     </td>
                                 </tr>
                             {% empty %}
@@ -341,5 +274,13 @@
 
     <!-- Script do Bootstrap para modais e interacoes da pagina. -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuracao global consumida pelo script de notificacoes via socket.
+        window.SOCKET_NOTIFICACAO_URL = "ws://127.0.0.1:8765";
+        window.USUARIO_LOGADO_ID = {{ user.id|default:"0" }};
+        window.USUARIO_EH_ADMIN = {% if user.is_staff or user.is_superuser %}true{% else %}false{% endif %};
+    </script>
+    <!-- Script que conecta ao servidor socket e mostra alertas em tempo real. -->
+    <script src="{% static 'chamados/js/notificacoes_socket.js' %}"></script>
 </body>
 </html>
