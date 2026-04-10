@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 
 from .models import Chamado
@@ -37,3 +37,15 @@ class CadastroUsuarioForm(UserCreationForm):
             "password1": "Senha",
             "password2": "Confirmacao da senha",
         }
+
+
+class LoginUsuarioForm(AuthenticationForm):
+    username = forms.CharField(
+        label="Usuario ou e-mail",
+        widget=forms.TextInput(
+            attrs={
+                "autofocus": True,
+                "placeholder": "Digite seu usuario ou e-mail",
+            }
+        ),
+    )

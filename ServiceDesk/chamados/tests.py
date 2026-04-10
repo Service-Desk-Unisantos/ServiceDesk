@@ -34,6 +34,21 @@ class FluxoAutenticacaoTests(TestCase):
 
         self.assertRedirects(response, reverse("lista_chamados"))
 
+    def test_login_autentica_com_email(self):
+        # RF02: usuario cadastrado tambem deve conseguir fazer login com o e-mail.
+        User.objects.create_user(
+            username="bruno",
+            email="bruno@example.com",
+            password="SenhaForte123!",
+        )
+
+        response = self.client.post(
+            reverse("login_usuario"),
+            {"username": "bruno@example.com", "password": "SenhaForte123!"},
+        )
+
+        self.assertRedirects(response, reverse("lista_chamados"))
+
     def test_rotas_protegidas_redirecionam_para_login(self):
         # Garantia de seguranca: sem login, o usuario nao acessa o painel/novo chamado.
         response_lista = self.client.get(reverse("lista_chamados"))

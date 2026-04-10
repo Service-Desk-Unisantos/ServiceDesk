@@ -1,0 +1,23 @@
+.auth-page {
+    min-height: 100vh;
+    background: linear-gradient(140deg, #e9f2ff 0%, #f6f8fb 45%, #ffffff 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.auth-card {
+    width: 100%;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: var(--sd-shadow);
+}
+
+.auth-card--login {
+    max-width: 460px;
+}
+
+.auth-card--cadastro {
+    max-width: 560px;
+}

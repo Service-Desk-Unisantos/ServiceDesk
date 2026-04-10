@@ -1,11 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from .forms import CadastroUsuarioForm, ChamadoForm
+from .forms import CadastroUsuarioForm, ChamadoForm, LoginUsuarioForm
 from .models import Chamado
 
 
@@ -28,13 +27,13 @@ def login_usuario(request):
 
     if request.method == "POST":
         # AuthenticationForm valida usuario e senha usando o auth do Django (RF02).
-        form = AuthenticationForm(request, data=request.POST)
+        form = LoginUsuarioForm(request, data=request.POST)
         if form.is_valid():
             login(request, form.get_user())
             messages.success(request, "Login realizado com sucesso.")
             return redirect(_destino_pos_login(request))
     else:
-        form = AuthenticationForm()
+        form = LoginUsuarioForm()
 
     return render(
         request,
