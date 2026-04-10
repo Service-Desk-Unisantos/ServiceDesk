@@ -85,7 +85,11 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+
+AUTHENTICATION_BACKENDS = [
+    "chamados.backends.EmailOuUsuarioBackend",
+]
 
 # URL de autenticacao usada pelo decorator @login_required (RF02).
 LOGIN_URL = "/login/"
